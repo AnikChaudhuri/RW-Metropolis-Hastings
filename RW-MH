@@ -1,0 +1,97 @@
+## Drawing 1000 samples from the dirichlet distribution, parameters are 10,6,3.
+import numpy as np
+import matplotlib.pyplot as plt 
+import pandas
+from scipy.stats.kde import gaussian_kde
+from numpy import linspace
+import statistics 
+import math
+from scipy.stats import multinomial
+from scipy.special import gamma
+samp = 1000
+s = np.random.dirichlet((10,6,3), samp).transpose() # drawing samples
+print(s.shape)# printing shape
+
+## Three parameters are to be estimated, K1, K2 and K3
+def dch(k1, k2, k3):
+    S=0
+    beta_k = gamma(k1)*gamma(k2)*gamma(k3)/(gamma(k1+k2+k3))
+    for gene in range(samp):
+        
+        S = S + np.log(s[0,gene]**(k1-1)*s[1,gene]**(k2-1)*s[2,gene]**(k3-1)/beta_k)
+    return S
+    
+## RW-MH     
+import random
+import time
+st = time.time()
+num = 60000
+K1 = np.zeros(num); K2 = np.zeros(num); K3 = np.zeros(num)
+
+k1 = 2;k2 = 6; k3 = 4
+acs = 0
+for priork in range(num):
+    
+    Uk1 = 2
+    
+    t = np.random.uniform(k1 - Uk1,k1 + Uk1, 1) # sampling k1 from a proposal distribution. 
+    if(t<0):
+        prop_K1 = -t
+    else:
+        prop_K1 = t
+        
+        
+        
+    Uk2 = 2
+    
+    t2 = np.random.uniform(k2 - Uk2,k2 + Uk2, 1)# sampling k1 from a proposal distribution. 
+    if(t2<0):
+        prop_K2 = -t2
+    else:
+        prop_K2 = t2
+        
+        
+    Uk3 = 2
+    
+    t3 = np.random.uniform(k3 - Uk3,k3 + Uk3, 1)# sampling k1 from a proposal distribution. 
+    if(t3<0):
+        prop_K3 = -t3
+    else:
+        prop_K3 = t3
+        
+    rp = dch(prop_K1, prop_K2, prop_K3)
+    rc = dch(k1, k2, k3)
+    kp1 = ((-1*prop_K1)) + ((-2*prop_K2)) +((-3*prop_K3))# prior distribution. I took the log of prior, the prior dist are
+    # exp(-k1), exp(-k2), exp(-k3)
+    
+    kc1 = ((-1*k1)) + ((-2*k2)) + ((-3*k3))
+        
+    
+    a1 = (kp1 + rp )-(kc1 + rc )
+    
+    if(np.log(np.random.uniform(0, 1 , 1)) < a1):
+        
+        k1 = prop_K1
+        k2 = prop_K2
+        k3 = prop_K3
+        acs = acs + 1
+    else:
+        k1 = k1
+        k2 = k2
+        k3 = k3
+        
+
+    
+  
+        
+    K1[priork] = k1
+    K2[priork] = k2
+    K3[priork] = k3
+       
+
+
+print(statistics.mode(K1))
+print(statistics.mode(K2))
+print(statistics.mode(K3))
+et = time.time()  
+print((et-st)/60)
