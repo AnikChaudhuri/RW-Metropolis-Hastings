@@ -1,0 +1,240 @@
+import numpy as np
+import matplotlib.pyplot as plt 
+import pandas
+from scipy.stats.kde import gaussian_kde
+from numpy import linspace
+import statistics 
+import math
+from scipy.stats import multinomial
+from scipy.stats import dirichlet
+from scipy.special import gamma
+d = [1, 1, 1]
+r1 = 0.598739352
+r2 = .493116352
+r3 = .579867973
+r4 = .320856474
+
+r5 = .081899588
+r6 = .072795849
+r7 = .334481889
+r8 = .435275282
+
+r9 = .517632462
+r10 = .44421341
+
+r=[.598739352,.493116352,.579867973,.320856474,.081899588,.072795849,.334481889,.435275282,.517632462,.44421341]
+def dch(k1, k2, k3):
+    
+    beta_k = gamma(k1)*gamma(k2)*gamma(k3)/(gamma(k1+k2+k3))
+    S =0
+    for gene in range(samp):
+        S = S + np.log( A1[gene]**(k1-1)* A2[gene]**(k2-1)* A3[gene]**(k3-1)/beta_k)
+        return S
+
+    
+def alphr(a1, a2, a3, prop_a1, prop_a2, prop_a3):
+    beta_a = gamma(prop_a1)*gamma(prop_a2)*gamma(prop_a3)/(gamma(prop_a1 + prop_a2 + prop_a3)) 
+    alr = np.log(a1**(prop_a1-1)*a2**(prop_a2-1)*a3**(prop_a3-1)) - np.log(beta_a)
+    return alr
+
+
+def rpa(ar1, ar2, ar3, k1, k2, k3, c, nu):
+    
+    if(nu==4):
+        A = 0 
+        
+        for dat in range(4):
+            z = dat+4
+            de = [1,1,1]
+            a = [ar1, ar2, ar3]
+            m = np.dot(de, a)
+            ex = (-0.5* c *(r[z] - m)**2 / (r[z]**2 + m**2))
+            A=A+np.log((m*(r[z] + m)/(r[z]**2 + m**2)**1.5))+(ex)+ np.log(ar1**(k1-1)*ar2**(k2-1)*ar3**(k3-1))
+            
+    
+    else:
+        de = [1,1,1]
+        a = [ar1, ar2, ar3]
+        m = np.dot(de,a)
+        ex = (-0.5* c *(r[nu] - m)**2 / (r[nu]**2 + m**2))
+        A = np.log((m*(r[nu] + m)/(r[nu]**2 + m**2)**1.5))+(ex)+ np.log(ar1**(k1-1)*ar2**(k2-1)*ar3**(k3-1))
+    return A
+    
+    import random
+import time
+st = time.time()
+num = 800000
+samp = 10
+K1 = np.zeros(num); K2 = np.zeros(num); K3 = np.zeros(num)
+
+A1 = np.zeros(samp); A2 = np.zeros(samp); A3 = np.zeros(samp)
+
+
+
+B1 = np.zeros(7); B2 = np.zeros(7); B3 = np.zeros(7)
+
+k1 = 2;k2 = 6; k3 = 4
+
+ac1 = 5; ac2 = 3; ac3 = 2
+
+acs = 0
+acc = 0
+nu0 = 1
+c0 = 10
+ni = samp
+c = 1
+ 
+for priork in range(num):
+    
+    
+    for alp in range(10):
+        U = min(ac1,ac2,ac3)
+        prop = np.random.dirichlet(((ac1)+5 , (ac2)+5 , (ac3)+5 ), 1).transpose()
+        prop_a1 = prop[0]
+        prop_a2 = prop[1]
+        prop_a3 = prop[2]
+        
+        if(alp==5 or alp==6 or alp==7):
+            continue
+        
+        
+       
+        p_num = rpa(prop_a1, prop_a2, prop_a3, k1, k2, k3, .1, alp)
+        p_den = rpa(ac1, ac2, ac3, k1, k2, k3, .1, alp)
+        alpha_num = alphr(ac1, ac2, ac3, prop_a1/U, prop_a2/U, prop_a3/U)
+        alpha_denom = alphr(prop_a1, prop_a2, prop_a3, ac1/U, ac2/U, ac3/U) 
+        
+        r_alpha = (p_num + alpha_num ) - (p_den + alpha_denom)
+        
+        
+        if(np.log(np.random.uniform(0, 1 , 1)) < r_alpha):
+            
+            ac1 = prop_a1
+            ac2 = prop_a2
+            ac3 = prop_a3
+            acc = acc+1
+        else:
+            ac1 = ac1
+            ac2 = ac2
+            ac3 = ac3
+        
+        A1[alp] = ac1
+        A2[alp] = ac2
+        A3[alp] = ac3
+        
+        
+    B1[0] = A1[0]
+    B1[1] = A1[1]
+    B1[2] = A1[2]
+    B1[3] = A1[3]
+    B1[4] = A1[4]
+    B1[5] = A1[8]
+    B1[6] = A1[9]
+        
+    B2[0] = A2[0]
+    B2[1] = A2[1]
+    B2[2] = A2[2]
+    B2[3] = A2[3]
+    B2[4] = A2[4]
+    B2[5] = A2[8]
+    B2[6] = A2[9]
+        
+    B3[0] = A3[0]
+    B3[1] = A3[1]
+    B3[2] = A3[2]
+    B3[3] = A3[3]
+    B3[4] = A3[4]
+    B3[5] = A3[8]
+    B3[6] = A3[9]
+        
+        
+        
+        
+    
+    for g in range(7):
+        G = (nu0 * c0**2)
+        de = [1,1,1]
+        a = [B1[g], B2[g], B3[g]]
+        m = np.dot(de,a)
+        G = G + ((r[g] - m)**2 / (r[g]**2 + m**2))
+
+    c = np.random.gamma((nu0 + ni)/2 , (G)/2, 1)   
+
+   
+    
+    
+    Uk1 = 6
+    
+    t = np.random.uniform(k1 - Uk1,k1 + Uk1, 1)
+    if(t<0):
+        prop_K1 = -t
+    else:
+        prop_K1 = t
+        
+        
+        
+    Uk2 = 6
+    
+    t2 = np.random.uniform(k2 - Uk2,k2 + Uk2, 1)
+    if(t2<0):
+        prop_K2 = -t2
+    else:
+        prop_K2 = t2
+        
+        
+    Uk3 = 6
+    
+    t3 = np.random.uniform(k3 - Uk3,k3 + Uk3, 1)
+    if(t3<0):
+        prop_K3 = -t3
+    else:
+        prop_K3 = t3
+        
+    rp = dch(prop_K1, prop_K2, prop_K3)
+    rc = dch(k1, k2, k3)
+    kp1 = ((-1*prop_K1)) + ((-2*prop_K2)) +((-3*prop_K3))
+    kc1 = ((-1*k1)) + ((-2*k2)) + ((-3*k3))
+        
+    
+    a1 = ( rp + kp1 )-( rc + kc1 )
+    
+    if(np.log(np.random.uniform(0, 1 , 1)) < a1):
+        
+        k1 = prop_K1
+        k2 = prop_K2
+        k3 = prop_K3
+        acs = acs + 1
+    else:
+        k1 = k1
+        k2 = k2
+        k3 = k3
+        
+    
+    
+    K1[priork] = k1
+    K2[priork] = k2
+    K3[priork] = k3
+        
+        
+
+et = time.time()  
+print((et-st)/60)
+
+##Thinning data
+Kth_1 = np.zeros(8000); Kth_2 = np.zeros(8000); Kth_3 = np.zeros(8000)
+alpha_1 = np.zeros(8000); alpha_2 = np.zeros(8000); alpha_3 = np.zeros(8000);
+for thin in range(8000):
+    Kth_1[thin] = K1[thin+100+791900]
+    Kth_2[thin] = K2[thin+100+791900]
+    Kth_3[thin] = K3[thin+100+791900]
+    alpha = np.random.dirichlet((Kth_1[thin], Kth_2[thin],Kth_3[thin]),1).transpose()
+    alpha_1[thin] = alpha[0]
+    alpha_2[thin] = alpha[1]
+    alpha_3[thin] = alpha[2]
+    
+density = gaussian_kde(alpha_1)
+xs = np.linspace(0,1,1000)
+plt.plot(xs,density(xs))
+#plt.plot(K1,np.exp(-K3))
+plt.show()
+    
