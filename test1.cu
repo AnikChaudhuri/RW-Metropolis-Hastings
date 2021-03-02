@@ -639,9 +639,9 @@ int num1 = (.4*num) - 1;*/
 cudaMalloc(&d_states1, sizeof(curandState_t)*num);
 setup<<<100, 300>>>(d_states1,123);*/
 
-g_samp<<<400, 1000>>>(dv_K1, dv_Ath1, dv_re, num, d_states);
-g_samp<<<400, 1000>>>(dv_K2, dv_Ath2, dv_re, num, d_states);
-g_samp<<<400, 1000>>>(dv_K3, dv_Ath3, dv_re, num, d_states);
+g_samp<<<num/1000, 1000>>>(dv_K1, dv_Ath1, dv_re, num, d_states);
+g_samp<<<num/1000, 1000>>>(dv_K2, dv_Ath2, dv_re, num, d_states);
+g_samp<<<num/1000, 1000>>>(dv_K3, dv_Ath3, dv_re, num, d_states);
 
 thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(Ath1.begin(),Ath2.begin(),Ath3.begin(), 
                                             di1.begin(),di2.begin(),di3.begin())),

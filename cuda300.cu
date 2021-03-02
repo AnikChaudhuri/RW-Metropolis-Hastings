@@ -264,11 +264,11 @@ double dch(double k11, double k12, double k13, thrust::device_vector<double>& A1
 
     double S;
     //result is stored in res_D, all the elements will be summed in S.
-    thrust::device_vector<double> res_D(500);
-    thrust::device_vector<double> k_1(500);
-    thrust::device_vector<double> k_2(500);
-    thrust::device_vector<double> k_3(500);
-    thrust::device_vector<double> beta_k(500);
+    thrust::device_vector<double> res_D(300);
+    thrust::device_vector<double> k_1(300);
+    thrust::device_vector<double> k_2(300);
+    thrust::device_vector<double> k_3(300);
+    thrust::device_vector<double> beta_k(300);
 
 
     thrust::fill(k_1.begin(), k_1.end(), k11-1);
@@ -359,7 +359,7 @@ int main() {
     thrust::random::normal_distribution<float> norm(0.0,1.0);
     thrust::random::uniform_int_distribution<int> uni1(0,1);
 
-    const int count = 500;// number of genes
+    const int count = 300;// number of genes
     int num = 10000;//MCMC iteration
     int counter = ((num)-(.4*num))/(100)+1;//used in thinning, this sets the number of samples after thinning.
 
@@ -406,35 +406,35 @@ int main() {
 			}
 			ifv.close();
 
-    thrust::device_vector<double> d_a(500);//current alpha1
-    thrust::device_vector<double> d_b(500);//current alpha2
-    thrust::device_vector<double> d_c(500);//current alpha3
+    thrust::device_vector<double> d_a(300);//current alpha1
+    thrust::device_vector<double> d_b(300);//current alpha2
+    thrust::device_vector<double> d_c(300);//current alpha3
 
     //initializing random values in alpha1, alpha2, alpha3
     thrust::fill(d_a.begin(), d_a.end(), .6);
     thrust::fill(d_b.begin(), d_b.end(), .2);
     thrust::fill(d_c.begin(), d_c.end(), .1);
 
-    thrust::device_vector<double> Acc(500);//not used anymore.
+    thrust::device_vector<double> Acc(300);//not used anymore.
 
     thrust::device_vector<double> Cg(1);//sample from 1/c^2
 
-    thrust::device_vector<double> ad1(500);//dirichlet sample, alpha1 proposal
-    thrust::device_vector<double> ad2(500);//dirichlet sample, alpha2 proposal
-    thrust::device_vector<double> ad3(500);//dirichlet sample, alpha3 proposal
+    thrust::device_vector<double> ad1(300);//dirichlet sample, alpha1 proposal
+    thrust::device_vector<double> ad2(300);//dirichlet sample, alpha2 proposal
+    thrust::device_vector<double> ad3(300);//dirichlet sample, alpha3 proposal
 
-    thrust::device_vector<double> aj1(3*500);//join all alphas
-    thrust::device_vector<double> aj2(3*500);//gamma samples are stored here.
-    thrust::device_vector<double> aj3(3*500);// not used anymore.
+    thrust::device_vector<double> aj1(3*300);//join all alphas
+    thrust::device_vector<double> aj2(3*300);//gamma samples are stored here.
+    thrust::device_vector<double> aj3(3*300);// not used anymore.
 
-    thrust::device_vector<double> alpha1(500);//proposed alpha1 = ad1
-    thrust::device_vector<double> alpha2(500);//proposed alpha2 = ad2
-    thrust::device_vector<double> alpha3(500);//proposed alpha3 = ad3
+    thrust::device_vector<double> alpha1(300);//proposed alpha1 = ad1
+    thrust::device_vector<double> alpha2(300);//proposed alpha2 = ad2
+    thrust::device_vector<double> alpha3(300);//proposed alpha3 = ad3
 
-    thrust::device_vector<double> Rk_p(500);//D(alphai |... )
-    thrust::device_vector<double> Rk_c(500);//D(alphai |... )
+    thrust::device_vector<double> Rk_p(300);//D(alphai |... )
+    thrust::device_vector<double> Rk_c(300);//D(alphai |... )
 
-    thrust::device_vector<double> Uni(3*500);//stores  1500 uniform distributed samples
+    thrust::device_vector<double> Uni(3*300);//stores  1500 uniform distributed samples
 
     thrust::device_vector<double> K1(num);//stores all the sampled K1
     thrust::device_vector<double> K2(num);//stores all the sampled K2
@@ -458,18 +458,18 @@ int main() {
     thrust::device_vector<double> p_k3(1);//proposed K3
 
     //d1, d2, d3 are expression profiles
-    thrust::device_vector<double> d1(500);
-    thrust::device_vector<double> d2(500);
-    thrust::device_vector<double> d3(500);
+    thrust::device_vector<double> d1(300);
+    thrust::device_vector<double> d2(300);
+    thrust::device_vector<double> d3(300);
 
-    thrust::device_vector<double> md(500);//proposed d*proposed alpha
-    thrust::device_vector<double> mc(500);//current d*current alpha
+    thrust::device_vector<double> md(300);//proposed d*proposed alpha
+    thrust::device_vector<double> mc(300);//current d*current alpha
 
-    thrust::device_vector<double> ex_alpha(500);//proposed (r-m)^2/(r^2 + m^2)
-    thrust::device_vector<double> ex_c(500);//current (r-m)^2/(r^2 + m^2)
-    //thrust::device_vector<double> c_alpha(500);
-    thrust::device_vector<double> resp(500);//proposed eqn 16 result
-    thrust::device_vector<double> resc(500);//current eqn 16 result
+    thrust::device_vector<double> ex_alpha(300);//proposed (r-m)^2/(r^2 + m^2)
+    thrust::device_vector<double> ex_c(300);//current (r-m)^2/(r^2 + m^2)
+    //thrust::device_vector<double> c_alpha(300);
+    thrust::device_vector<double> resp(300);//proposed eqn 16 result
+    thrust::device_vector<double> resc(300);//current eqn 16 result
 
     //pointer assignment
     double * dv_ptra = thrust::raw_pointer_cast(d_a.data());//current
@@ -493,7 +493,7 @@ int main() {
     double * dv_resp = thrust::raw_pointer_cast(resp.data());//proposed eqn 16 result
     double * dv_resc = thrust::raw_pointer_cast(resc.data());//current eqn 16 result
 
-    double * dv_Rkp = thrust::raw_pointer_cast(Rk_p.data());// Rk eqn 500
+    double * dv_Rkp = thrust::raw_pointer_cast(Rk_p.data());// Rk eqn 300
     double * dv_Rkc = thrust::raw_pointer_cast(Rk_c.data());
 
     double * dv_Cg = thrust::raw_pointer_cast(Cg.data());
@@ -522,18 +522,18 @@ int main() {
     //cudaMalloc((void **)&d_states, 64 * 64 * sizeof(curandStatePhilox4_32_10_t));
 
     curandState_t* d_states;
-    cudaMalloc(&d_states, sizeof(curandState_t)*3*500);
+    cudaMalloc(&d_states, sizeof(curandState_t)*3*300);
     
 
     dim3 gridSize(1);
-    dim3 blockSize(500);
-    thrust::device_vector<double> r(500);//synthetic r will be stored here.
+    dim3 blockSize(300);
+    thrust::device_vector<double> r(300);//synthetic r will be stored here.
 
-    std::vector<double> mu(500);//m = d*alpha, mean of the normal distribution
+    std::vector<double> mu(300);//m = d*alpha, mean of the normal distribution
     double * dv_r = thrust::raw_pointer_cast(r.data());//points to r
 
     //synthetic data generation starts here.
-    for(int i = 0; i<500; i++){
+    for(int i = 0; i<300; i++){
             
         do{
             //sampling 0s and 1s for d1, d2, d3
@@ -554,14 +554,14 @@ int main() {
 
     }//data generation ends here.
 
-    int count1 = 3*500;
+    int count1 = 3*300;
     int count2;
     //double U = .02;
     double U = .60;
 
     //double nu0 = 1; double c20 = 0; 
     double nu0 = 1; double c20 = 0; //priors over 1/c^2
-    double c2a = (nu0 + 500.)/2.; double c_1;//c2a is the a parameter of 1/c^2
+    double c2a = (nu0 + 300.)/2.; double c_1;//c2a is the a parameter of 1/c^2
     //double acp = 0;//acceptance fro alpha
     double ack = 0;//accceptance for K
 
@@ -576,19 +576,19 @@ int main() {
     for(int j = 0; j<num; j++){
         
         //std::cout << "loop " << j <<std::endl;
-        setup<<<3, 500>>>(d_states,j);//setting up random numbers
+        setup<<<3, 300>>>(d_states,j);//setting up random numbers
 
         //joining all the alphas into one vector, so that all the samples can be sampled at once in parallel.
         thrust::copy(d_a.begin(), d_a.end(), aj1.begin());  //joining all the alphas
-        thrust::copy(d_b.begin(), d_b.end(), aj1.begin()+500);
-        thrust::copy(d_c.begin(), d_c.end(), aj1.begin()+(2*500));
+        thrust::copy(d_b.begin(), d_b.end(), aj1.begin()+300);
+        thrust::copy(d_c.begin(), d_c.end(), aj1.begin()+(2*300));
 
-        gen_gamma<<<3, 500>>>(dv_aj1, dv_aj2, dv_aj3, count1, d_states, U, dv_Uni);//generating gamma samples (proposals)
+        gen_gamma<<<3, 300>>>(dv_aj1, dv_aj2, dv_aj3, count1, d_states, U, dv_Uni);//generating gamma samples (proposals)
 
         //separating the generated gamma samples.
-        thrust::copy_n(aj2.begin(), 500, alpha1.begin() );   //separating the alphas
-        thrust::copy_n(aj2.begin()+500, 2*500, alpha2.begin() );
-        thrust::copy_n(aj2.begin()+(2*500), 3*500, alpha3.begin() );
+        thrust::copy_n(aj2.begin(), 300, alpha1.begin() );   //separating the alphas
+        thrust::copy_n(aj2.begin()+300, 2*300, alpha2.begin() );
+        thrust::copy_n(aj2.begin()+(2*300), 3*300, alpha3.begin() );
 
         //normalizing the generated gamma samples to get dirichlet distributed samples.
         thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(alpha1.begin(),alpha2.begin(),alpha3.begin(), 
@@ -631,7 +631,7 @@ int main() {
             p_k1[0] = t;
         }
 
-        //double Uk2 = .500;
+        //double Uk2 = .300;
         double t2 = ((c_k2[0] + Uk1)-(c_k2[0] - Uk1)+adj)*Uni[1] + (c_k2[0] - Uk1);
 
         if(t2 < 0){
@@ -641,7 +641,7 @@ int main() {
             p_k2[0] = t2;
         }
 
-        //double Uk3 = .500;
+        //double Uk3 = .300;
         double t3 = ((c_k3[0] + Uk1)-(c_k3[0] - Uk1)+adj)*Uni[2] + (c_k3[0] - Uk1);
 
         if(t3 < 0){
@@ -687,7 +687,7 @@ int main() {
 
     long stop = clock();//stop clock
     fast = stop-start;//time taken
-    std::cout << "time: "<< fast <<std::endl;
+
     //thinning the data. 
     int count3 = counter - 1;
     int num1 = (.4*num) - 1;
@@ -706,9 +706,9 @@ int main() {
 
     ccopy<<<2000, 1000>>>(dv_K1, dv_K2, dv_K3, dv_Kth1, dv_Kth2, dv_Kth3, count3, num1);
     
-    g_samp<<<400, 1000>>>(dv_Kth1, dv_At1, dv_re, counter, d_states);
-    g_samp<<<400, 1000>>>(dv_Kth2, dv_At2, dv_re, counter, d_states);
-    g_samp<<<400, 1000>>>(dv_Kth3, dv_At3, dv_re, counter, d_states);
+    g_samp<<<300, 1000>>>(dv_Kth1, dv_At1, dv_re, counter, d_states);
+    g_samp<<<300, 1000>>>(dv_Kth2, dv_At2, dv_re, counter, d_states);
+    g_samp<<<300, 1000>>>(dv_Kth3, dv_At3, dv_re, counter, d_states);
 
     thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(At1.begin(),At2.begin(),At3.begin(), 
                                             di1.begin(),di2.begin(),di3.begin())),
@@ -717,7 +717,7 @@ int main() {
     cudaFree(d_states);
 
 
-    
+    std::cout << "time: "<< fast <<std::endl;
 
         //saving K1, K2, K3 on hard disk.
         std::ofstream myfile3;

@@ -364,9 +364,9 @@ int main() {
     int counter = ((num)-(.4*num))/(100)+1;//used in thinning, this sets the number of samples after thinning.
 
     //loading data starts here.
-    ifstream ifs("alpha1.txt", ifstream::in);
+    ifstream ifs("d.txt", ifstream::in);
 			
-			std::vector<double> a;//alpha1 is loaded in a
+			thrust::host_vector<double> a;//alpha1 is loaded in a
  
 			while((!ifs.eof()) && ifs)
 			{
@@ -378,9 +378,9 @@ int main() {
 			ifs.close();
 			
 			  
-			ifstream ifu("alpha2.txt", ifstream::in);
+			ifstream ifu("d1.txt", ifstream::in);
 			
-			std::vector<double> b;//alpha2 is loaded in b
+			thrust::host_vector<double> b;//alpha2 is loaded in b
  
 			while((!ifu.eof()) && ifu)
 			{
@@ -393,9 +393,9 @@ int main() {
 			
 			  
 
-			ifstream ifv("alpha3.txt", ifstream::in);
+			ifstream ifv("d2.txt", ifstream::in);
 			
-			std::vector<double> c;//alpha3 is loaded in c
+			thrust::host_vector<double> c;//alpha3 is loaded in c
    
 			while((!ifv.eof()) && ifv)
 			{
@@ -404,8 +404,22 @@ int main() {
 			ifv >> iNumber3;
 			c.push_back(iNumber3);
 			}
-			ifv.close();
+            ifv.close();
 
+            
+            ifstream ifq("r.txt", ifstream::in);
+			
+			thrust::host_vector<double> R;//alpha3 is loaded in c
+   
+			while((!ifq.eof()) && ifq)
+			{
+			double iNumber4 = 0;
+   
+			ifq >> iNumber4;
+			R.push_back(iNumber4);
+			}
+			ifq.close();
+    
     thrust::device_vector<double> d_a(500);//current alpha1
     thrust::device_vector<double> d_b(500);//current alpha2
     thrust::device_vector<double> d_c(500);//current alpha3
@@ -533,24 +547,13 @@ int main() {
     double * dv_r = thrust::raw_pointer_cast(r.data());//points to r
 
     //synthetic data generation starts here.
-    for(int i = 0; i<500; i++){
-            
-        do{
-            //sampling 0s and 1s for d1, d2, d3
-            d1[i] = uni1(rng);
-            d2[i] = uni1(rng);
-            d3[i] = uni1(rng);
+    for(int i = 15501; i<16000; i++){
+        d1[i-15501] = a[i];
+        d2[i-15501] = b[i];
+        d3[i-15501] = c[i];
 
-        }while(d1[i]==d2[i]==d3[i]==0);
-        
-        mu[i] = d1[i]*a[i] + d2[i]*b[i] + d3[i]*c[i];//computing mean for normal distribution
-        do{
-            thrust::random::normal_distribution<double> norm1(mu[i],0.1*mu[i]);// N(mu,0.1*mu)
-            r[i] = norm1(rng);// sampling from N(mu,0.1*mu)
-
-        }while(r[i] >=1);
-        
-        
+        r[i-15501] = R[i];
+     
 
     }//data generation ends here.
 
@@ -621,7 +624,7 @@ int main() {
         //sampling K starts here.
         //generating proposals for Ks.
         double Uk1 =0.7;//tunning parameter for K
-        double adj = 0.4;//tunning parameter for K
+        double adj = 0.0;//tunning parameter for K
         double t = ((c_k1[0] + Uk1)-(c_k1[0] - Uk1)+adj)*Uni[0] + (c_k1[0] - Uk1);
 
         if(t < 0){

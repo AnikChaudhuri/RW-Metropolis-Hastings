@@ -8,11 +8,14 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
+#include <chrono> 
 #include <cmath>
 #include <algorithm>
 #include <random>
 
 using namespace std;
+using namespace std::chrono; 
+
 std::default_random_engine rng;
 std::uniform_real_distribution<double> uni(0.0,1.0);
 std::normal_distribution<double> norm(0.0,1.0);
@@ -178,22 +181,22 @@ int main(){
 			ifv.close();// loading ends here.
     
 	int num = 10000;// number of iterations
-	std::vector<double> ac(500);// current value of alpha1
-	std::vector<double> bc(500);// current value of alpha2
-	std::vector<double> cc(500);// current value of alpha3
+	std::vector<double> ac(100);// current value of alpha1
+	std::vector<double> bc(100);// current value of alpha2
+	std::vector<double> cc(100);// current value of alpha3
 
-	std::vector<double> r(500);// synthetic r
-	std::vector<double> mu(500);// mean, used in generating r.
+	std::vector<double> r(100);// synthetic r
+	std::vector<double> mu(100);// mean, used in generating r.
 
 	//expression profile d1, d2, d3
-	std::vector<int> d1(500);
-	std::vector<int> d2(500);
-	std::vector<int> d3(500);
+	std::vector<int> d1(100);
+	std::vector<int> d2(100);
+	std::vector<int> d3(100);
     
-    double U = .02;//tunning parameter
+    double U = .09;//tunning parameter
 	
 	//generating synthetic data.
-    for(int i = 0; i<500; i++){
+    for(int i = 0; i<100; i++){
         
 		do{
 			//randomly setting d1, d2, d3
@@ -216,27 +219,27 @@ int main(){
     }// end of data generation
 	double mpr, mc;//mpr = d*proposed alpha; mc = d*current alpha.
 
-	std::vector<double> m_b(500);// used for calculating the parameters for 1/c^2.
+	std::vector<double> m_b(100);// used for calculating the parameters for 1/c^2.
 	//gap, gbp, gcp are used for holding the generated gamma variables for alpha1, alpha2, alpha3.
-	std::vector<double> gap(500);
-	std::vector<double> gbp(500);
-	std::vector<double> gcp(500);
+	std::vector<double> gap(100);
+	std::vector<double> gbp(100);
+	std::vector<double> gcp(100);
 
 	//apr, bpr, cpr are used for storing the proposals of alpha1, alpha2, alpha3
-	std::vector<double> apr(500);
-	std::vector<double> bpr(500);
-	std::vector<double> cpr(500);
+	std::vector<double> apr(100);
+	std::vector<double> bpr(100);
+	std::vector<double> cpr(100);
 
-	std::vector<double> resp(500);//this holds the conditional prob. of proposed alpha 
-	std::vector<double> resc(500);//this holds the conditional prob. of current alpha 
+	std::vector<double> resp(100);//this holds the conditional prob. of proposed alpha 
+	std::vector<double> resc(100);//this holds the conditional prob. of current alpha 
 
 	//K1, K2, K3 holds the sampled Ks. 
 	std::vector<double> K1(num);
 	std::vector<double> K2(num);
 	std::vector<double> K3(num);
 
-	std::vector<double> rpk(500);//holds the result from function dch.
-	std::vector<double> rc(500);//holds the result from function dch.
+	std::vector<double> rpk(100);//holds the result from function dch.
+	std::vector<double> rc(100);//holds the result from function dch.
 	
 	//initiating random alphas
 	std::fill(ac.begin(), ac.end(), .6);
@@ -245,7 +248,7 @@ int main(){
 
 	double nu0 = .01; double c20 = 1000; double c2_b;//c2_b is the b parameter for 1/c^2.
 
-	double c2a = (nu0 + 500.)/2.; double c_1; //c2a is the a parameter for 1/c^2
+	double c2a = (nu0 + 100.)/2.; double c_1; //c2a is the a parameter for 1/c^2
 
 	double c_k1, c_k2, c_k3, p_k1, p_k2, p_k3;// c_k1,c_k2,c_k3 holds the current samples of K. 
 	//p_k1,p_k2,p_k3 holds the proposed K
@@ -257,6 +260,7 @@ int main(){
 	double a1k; long fast;//a1k holds Rk. fast is used for calculatin time.
 
 	long start = clock();//clock
+	auto start1 = high_resolution_clock::now(); 
 
 	//Big MCMC loop starts here.
 	for(int j = 0; j< num; j++){
@@ -264,13 +268,13 @@ int main(){
 		std::cout << "loop no: " << j<<std::endl;
 		ac_b = 0;
 		//summing the b parameter for 1/c^2
-		for(int l= 0; l<500; l++ ){
+		for(int l= 0; l<100; l++ ){
 				m_b[l] = ac[l] * d1[l] + bc[l] * d2[l] + cc[l] * d3[l];
 				ac_b = (pow((m_b[l]-r[l]),2)/(pow(m_b[l],2)+pow(r[l],2))) + ac_b;
 			}
 		
 		//MH for alpha starts here
-		 for(int k = 0; k< 500; k++){
+		 for(int k = 0; k< 100; k++){
 			
 			//generating gamma variables; generating proposals for alpha.
 			gap[k] = gen_gamma(ac[k], U);
@@ -313,7 +317,8 @@ int main(){
 		double Uk = 1;//tunning parameter for K.
 
 		//Generating proposals for K starts here.
-		double t = ((c_k1 + Uk)-(c_k1 - Uk))*uni(rng) + (c_k1 - Uk);
+        double adj = .99;
+		double t = ((c_k1 + Uk)-(c_k1 - Uk)+adj)*uni(rng) + (c_k1 - Uk);
 		if(t < 0){
     		p_k1 = -t;
 			}
@@ -321,7 +326,7 @@ int main(){
     		p_k1 = t;
 		}
 
-		double t1 = ((c_k2 + Uk)-(c_k2 - Uk))*uni(rng) + (c_k2 - Uk);
+		double t1 = ((c_k2 + Uk)-(c_k2 - Uk)+adj)*uni(rng) + (c_k2 - Uk);
 		if(t1 < 0){
     		p_k2 = -t1;
 			}
@@ -329,7 +334,7 @@ int main(){
     		p_k2 = t1;
 		}
 
-		double t2 = ((c_k3 + Uk)-(c_k3 - Uk))*uni(rng) + (c_k3 - Uk);
+		double t2 = ((c_k3 + Uk)-(c_k3 - Uk)+adj)*uni(rng) + (c_k3 - Uk);
 		if(t2 < 0){
     		p_k3 = -t2;
 			}
@@ -339,7 +344,7 @@ int main(){
 		
 		double multp = 0;double multc = 0;
 		//loop to calculate P(alpha|K)
-		for(int l=0; l<500; l++){
+		for(int l=0; l<100; l++){
 			rpk[l] = dch(p_k1, p_k2, p_k3, ac[l], bc[l], cc[l]);
 			rc[l] = dch(c_k1, c_k2, c_k3, ac[l], bc[l], cc[l]);
 			 multp = multp + rpk[l];
@@ -378,8 +383,13 @@ int main(){
 	}//MCMC loop ends here.
 	long stop = clock();
 		fast = stop - start;//time taken
-	
+		
+	auto stop1 = high_resolution_clock::now(); 
+	auto duration = duration_cast<microseconds>(stop1 - start1); 
+
 	std::cout << "time "<< fast<<std::endl;
+	cout << "Time taken by function: "
+         << duration.count() << " microseconds" << endl; 
 
 	//saving the sampled K1 in K1.txt
 	std::ofstream myfile3;

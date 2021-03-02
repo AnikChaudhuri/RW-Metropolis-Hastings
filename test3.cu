@@ -5,13 +5,8 @@
 #include <curand_kernel.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
-#include <thrust/random/linear_congruential_engine.h>
-#include <thrust/random/uniform_int_distribution.h>
-#include <thrust/random/normal_distribution.h>
 
 using namespace std;
-
-
 
 __global__ void gen_gamma(double* a, double* b, double* dc, int count1, curandState_t *d_states, 
                             double U, double* dv_Uni)
@@ -38,7 +33,7 @@ if(idx < count1)
         dv_Uni[idx] = u1;
         
         
-    }while(dc[idx] == 0);
+    }while(dc[idx] == 0||b[idx]==0);
 }
 else{
     double ds1 = ((a[idx])/U ) -1.0/3.;
@@ -224,11 +219,11 @@ double dch(double k11, double k12, double k13, thrust::device_vector<double>& A1
             thrust::device_vector<double>& A2, thrust::device_vector<double>& A3){
 
     double S;
-    thrust::device_vector<double> res_D(10);
-    thrust::device_vector<double> k_1(10);
-    thrust::device_vector<double> k_2(10);
-    thrust::device_vector<double> k_3(10);
-    thrust::device_vector<double> beta_k(10);
+    thrust::device_vector<double> res_D(28);
+    thrust::device_vector<double> k_1(28);
+    thrust::device_vector<double> k_2(28);
+    thrust::device_vector<double> k_3(28);
+    thrust::device_vector<double> beta_k(28);
 
 
     thrust::fill(k_1.begin(), k_1.end(), k11-1);
@@ -265,89 +260,88 @@ __global__ void ccopy(double *dv_Af1, double *dv_Af2, double *dv_Af3, double *dv
 
 }
 
+__global__ void g_samp(double *a, double *b, double *dc, int counter, curandState_t *d_states){
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    curandState_t state = d_states[idx];
+    if(idx <= counter){
+        if((a[idx]/.1) < 1.){
+            double d = ((a[idx]/.1) + 1.0) -1.0/3.;
+            double c = 1.0/sqrt(9*d);
+            do{
+                
+                
+                double u1 = curand_uniform(&state); //one uniform for proposal
+                double u2 = curand_normal(&state); //one uniform for accept/reject step
+                double v = pow((1. + c*u2), 3);
+                int j3 = (v > 0) && (log(u1) < 0.5*pow(u2, 2)+d - d*v+d*log(v));
+                dc[idx] = j3;
+                b[idx] = d*v*pow(u1,1/(a[idx]/.1));//samples
+                
+                
+                
+            }while(dc[idx] == 0);
+        }
+        else{
+            double ds1 = ((a[idx]/.1) ) -1.0/3.;
+            double c1 = 1.0/sqrt(9*ds1);
+            do{
+                
+                
+                double u11 = curand_uniform(&state); //one uniform for proposal
+                double u21 = curand_normal(&state); //one uniform for accept/reject step
+                double v1 = pow((1. + c1*u21), 3);
+                int j1 = (v1 > 0) && (log(u11) < 0.5*pow(u21, 2)+ds1 - ds1*v1+ds1*log(v1));
+                dc[idx] = j1;
+                b[idx] = ds1*v1;//samples
+                
+                
+                
+            }while(dc[idx] == 0);
+        
+        }/*if(b[idx]==0){
+            b[idx] = .001;
+        }*/
+        
+        }
+    
+
+
+}
+
 int main() {
-    thrust::minstd_rand rng;
-thrust::random::uniform_real_distribution<double> uni(0.0,1.0);
-thrust::random::normal_distribution<float> norm(0.0,1.0);
-thrust::random::uniform_int_distribution<int> uni1(0,1);
 // Number of items in the arrays
-const int count = 10;
-int num = 400000;
+const int count = 28;
+int num = 800000;
 int counter = ((num)-(.4*num))/(100)+1;
-ifstream ifs("alpha1.txt", ifstream::in);
-			
-			std::vector<double> a;
- 
-			while((!ifs.eof()) && ifs)
-			{
-			double iNumber = 0;
- 
-			ifs >> iNumber;
-			a.push_back(iNumber);
-			}
-			ifs.close();
-			
-			  
-			ifstream ifu("alpha2.txt", ifstream::in);
-			
-			std::vector<double> b;
- 
-			while((!ifu.eof()) && ifu)
-			{
-			double iNumber2 = 0;
- 
-			ifu >> iNumber2;
-			b.push_back(iNumber2);
-			}
-			ifs.close();
-			
-			  
 
-			ifstream ifv("alpha3.txt", ifstream::in);
-			
-			std::vector<double> c;
-   
-			while((!ifv.eof()) && ifv)
-			{
-			double iNumber3 = 0;
-   
-			ifv >> iNumber3;
-			c.push_back(iNumber3);
-			}
-			ifv.close();
+thrust::device_vector<double> d_a(28);//current
+thrust::device_vector<double> d_b(28);
+thrust::device_vector<double> d_c(28);
 
-thrust::device_vector<double> d_a(10);//current
-thrust::device_vector<double> d_b(10);
-thrust::device_vector<double> d_c(10);
-
-thrust::fill(d_a.begin(), d_a.end(), .6);
-thrust::fill(d_b.begin(), d_b.end(), .2);
-thrust::fill(d_c.begin(), d_c.end(), .1);
-
-thrust::device_vector<double> Acc(10);
+thrust::device_vector<double> Acc(28);
 
 thrust::device_vector<double> Cg(1);
 
-thrust::device_vector<double> ad1(10);//dirichlet
-thrust::device_vector<double> ad2(10);
-thrust::device_vector<double> ad3(10);
+thrust::device_vector<double> ad1(28);//dirichlet
+thrust::device_vector<double> ad2(28);
+thrust::device_vector<double> ad3(28);
 
-thrust::device_vector<double> aj1(3*10);//join all alphas
-thrust::device_vector<double> aj2(3*10);//samples
-thrust::device_vector<double> aj3(3*10);
+thrust::device_vector<double> aj1(28*3);//join all alphas
+thrust::device_vector<double> aj2(28*3);//samples
+thrust::device_vector<double> aj3(28*3);
 /*
 thrust::device_vector<double> Af1(10*num);
 thrust::device_vector<double> Af2(10*num);
 thrust::device_vector<double> Af3(10*num);*/
 
-thrust::device_vector<double> alpha1(10);//proposed
-thrust::device_vector<double> alpha2(10);
-thrust::device_vector<double> alpha3(10);
+thrust::device_vector<double> alpha1(28);//proposed
+thrust::device_vector<double> alpha2(28);
+thrust::device_vector<double> alpha3(28);
 
-thrust::device_vector<double> Rk_p(10);//D(alphai |... )
-thrust::device_vector<double> Rk_c(10);//D(alphai |... )
+thrust::device_vector<double> Rk_p(28);//D(alphai |... )
+thrust::device_vector<double> Rk_c(28);//D(alphai |... )
 
-thrust::device_vector<double> Uni(3*10);
+thrust::device_vector<double> Uni(28*3);
 
 thrust::device_vector<double> K1(num);
 thrust::device_vector<double> K2(num);
@@ -368,23 +362,68 @@ thrust::device_vector<double> p_k1(1);
 thrust::device_vector<double> p_k2(1);
 thrust::device_vector<double> p_k3(1);
 
+thrust::fill(d_a.begin(), d_a.end(),.1);
+thrust::fill(d_b.begin(), d_b.end(),.2);
+thrust::fill(d_c.begin(), d_c.end(),.1);
 /*
 thrust::fill(d_a.begin(), d_a.end(),.6);
 thrust::fill(d_b.begin(), d_b.end(),.3);
 thrust::fill(d_c.begin(), d_c.end(),.1);*/
 
-thrust::device_vector<double> d1(10);
-thrust::device_vector<double> d2(10);
-thrust::device_vector<double> d3(10);
+thrust::device_vector<double> Ath1(num);
+thrust::device_vector<double> Ath2(num);
+thrust::device_vector<double> Ath3(num);
 
-thrust::device_vector<double> md(10);//proposed d*proposed alpha
-thrust::device_vector<double> mc(10);//current d*current alpha
+thrust::device_vector<double> d1(28);
+thrust::device_vector<double> d2(28);
+thrust::device_vector<double> d3(28);
 
-thrust::device_vector<double> ex_alpha(10);//proposed (r-m)^2/(r^2 + m^2)
-thrust::device_vector<double> ex_c(10);//current (r-m)^2/(r^2 + m^2)
+thrust::device_vector<double> md(28);//proposed d*proposed alpha
+thrust::device_vector<double> mc(28);//current d*current alpha
+
+thrust::device_vector<double> ex_alpha(28);//proposed (r-m)^2/(r^2 + m^2)
+thrust::device_vector<double> ex_c(28);//current (r-m)^2/(r^2 + m^2)
 //thrust::device_vector<double> c_alpha(10);
-thrust::device_vector<double> resp(10);//proposed eqn 16 result
-thrust::device_vector<double> resc(10);//current eqn 16 result
+thrust::device_vector<double> resp(28);//proposed eqn 16 result
+thrust::device_vector<double> resc(28);//current eqn 16 result
+
+thrust::device_vector<double> re(num);
+   
+    d1[0] = 0; d2[0] = 1; d3[0] = 1; //d for each alpha
+    d1[1] = 0; d2[1] = 1; d3[1] = 1;
+    d1[2] = 0; d2[2] = 1; d3[2] = 1;
+    d1[3] = 0; d2[3] = 1; d3[3] = 1;
+
+    d1[4] = 0; d2[4] = 1; d3[4] = 0;
+    d1[5] = 0; d2[5] = 1; d3[5] = 0;
+    d1[6] = 0; d2[6] = 1; d3[6] = 0;
+    d1[7] = 0; d2[7] = 1; d3[7] = 0;
+
+    d1[8] = 0; d2[8] = 1; d3[8] = 0;
+
+    d1[9] = 0; d2[9] = 1; d3[9] = 0;
+    d1[10] = 0; d2[10] = 1; d3[10] = 0; //d for each alpha
+    d1[11] = 0; d2[11] = 1; d3[11] = 0;
+    d1[12] = 0; d2[12] = 1; d3[12] = 0;
+
+    d1[13] = 0; d2[13] = 1; d3[13] = 0;
+    d1[14] = 0; d2[14] = 1; d3[14] = 0;
+    d1[15] = 0; d2[15] = 1; d3[15] = 0;
+    d1[16] = 0; d2[16] = 1; d3[16] = 0;
+    d1[17] = 0; d2[17] = 1; d3[17] = 0;
+    d1[18] = 0; d2[18] = 1; d3[18] = 0;
+    d1[19] = 0; d2[19] = 1; d3[19] = 0;
+
+    d1[20] = 0; d2[20] = 1; d3[20] = 0;
+    d1[21] = 0; d2[21] = 1; d3[21] = 0;
+    d1[22] = 0; d2[22] = 1; d3[22] = 0;
+    d1[23] = 0; d2[23] = 1; d3[23] = 0;
+
+    d1[24] = 0; d2[24] = 1; d3[24] = 0;
+    d1[25] = 0; d2[25] = 1; d3[25] = 0;
+    d1[26] = 0; d2[26] = 1; d3[26] = 0;
+    d1[27] = 0; d2[27] = 1; d3[27] = 0;
+
 
 double * dv_ptra = thrust::raw_pointer_cast(d_a.data());//current
 double * dv_ptrb = thrust::raw_pointer_cast(d_b.data());
@@ -407,7 +446,7 @@ double * dv_exc = thrust::raw_pointer_cast(ex_c.data());//current (r-m)^2/(r^2 +
 double * dv_resp = thrust::raw_pointer_cast(resp.data());//proposed eqn 16 result
 double * dv_resc = thrust::raw_pointer_cast(resc.data());//current eqn 16 result
 
-double * dv_Rkp = thrust::raw_pointer_cast(Rk_p.data());// Rk eqn 10
+double * dv_Rkp = thrust::raw_pointer_cast(Rk_p.data());// Rk eqn 28
 double * dv_Rkc = thrust::raw_pointer_cast(Rk_c.data());
 
 double * dv_Cg = thrust::raw_pointer_cast(Cg.data());
@@ -419,6 +458,16 @@ double * dv_d3 = thrust::raw_pointer_cast(d3.data());
 double * dv_aj1 = thrust::raw_pointer_cast(aj1.data());//joining all alphas
 double * dv_aj2 = thrust::raw_pointer_cast(aj2.data());//samples
 double * dv_aj3 = thrust::raw_pointer_cast(aj3.data());
+
+double * dv_Ath1 = thrust::raw_pointer_cast(Ath1.data());//thinning
+double * dv_Ath2 = thrust::raw_pointer_cast(Ath2.data());
+double * dv_Ath3 = thrust::raw_pointer_cast(Ath3.data());
+
+double * dv_re = thrust::raw_pointer_cast(re.data());
+/*
+double * dv_Af1 = thrust::raw_pointer_cast(Af1.data());//thinning
+double * dv_Af2 = thrust::raw_pointer_cast(Af2.data());
+double * dv_Af3 = thrust::raw_pointer_cast(Af3.data());*/
 
 double * dv_K1 = thrust::raw_pointer_cast(K1.data());//thinning
 double * dv_K2 = thrust::raw_pointer_cast(K2.data());
@@ -435,48 +484,57 @@ double * dv_c2b = thrust::raw_pointer_cast(c2b.data());
 //cudaMalloc((void **)&d_states, 64 * 64 * sizeof(curandStatePhilox4_32_10_t));
 
 curandState_t* d_states;
-cudaMalloc(&d_states, sizeof(curandState_t)*3*10);
+cudaMalloc(&d_states, sizeof(curandState_t)*num);
    
 
 dim3 gridSize(1);
-dim3 blockSize(10);
-thrust::device_vector<double> r(10);
-//thrust::device_vector<double> r(x2, x2 + 10);
-std::vector<double> mu(10);
+dim3 blockSize(28);
+
+//double x2[10] = {.598739352,.493116352,.579867973,.320856474,.081899588,.072795849,.334481889,.435275282,.517632462,.44421341};
+double x2[28] = {0.4796,
+    0.2892,
+    0.2535,
+    0.2698,
+    0.1550,
+    0.2793,
+    0.3015,
+    0.3415,
+    0.3842,
+    0.2570,
+    0.2059,
+    0.2717,
+    0.2679,
+    0.0087,
+    0.0242,
+    0.1661,
+    0.2793,
+    0.3789,
+    0.3737,
+    0.3536,
+    0.2624,
+    0.2553,
+    0.2253,
+    0.2031,
+    0.3164,
+    0.4623,
+    0.4633,
+    0.3660};
+
+thrust::device_vector<double> r(x2, x2 + 28);
 double * dv_r = thrust::raw_pointer_cast(r.data());
-for(int i = 0; i<10; i++){
-        
-    do{
-        d1[i] = uni1(rng);
-        d2[i] = uni1(rng);
-        d3[i] = uni1(rng);
 
-    }while(d1[i]==d2[i]==d3[i]==0);
-    
-    mu[i] = d1[i]*a[i] + d2[i]*b[i] + d3[i]*c[i];
-    do{
-        thrust::random::normal_distribution<double> norm1(mu[i],0.1*mu[i]);
-        r[i] = norm1(rng);
-
-    }while(r[i] >=1);
-    
-    //std::cout << r[i] << std::endl;
-
-}
-int count1 = 3*10;
+int count1 = 28*3;
 int count2;
-//double U = .02;
-double U = .60;
+//double U = 9,28;
+double U = .6;
 
-//double nu0 = 1; double c20 = 0; 
+//double nu0 = .1; double c20 = 1000; 
 double nu0 = 1; double c20 = 0; 
-double c2a = (nu0 + 10.)/2.; double c_1;
+double c2a = (nu0 + 28.)/2.; double c_1;
 double acp = 0;//acceptance fro alpha
 double ack = 0;//accceptance for K
 //double acc = 0;//increment
-//c_k1[0] = 2; c_k2[0] =6; c_k3[0] = 4;
 c_k1[0] = 2; c_k2[0] =6; c_k3[0] = 4;
-
 //c_k1[0] = .3; c_k2[0] =.6; c_k3[0] = .4;
 
 
@@ -484,17 +542,17 @@ double k1; double k2 ; double k3 ;
 double a1k;
 for(int j = 0; j<num; j++){
     std::cout << "loop " << j <<std::endl;
-setup<<<1, 30>>>(d_states,j);
+setup<<<1, 28*3>>>(d_states,j);
 
 thrust::copy(d_a.begin(), d_a.end(), aj1.begin());  //joining all the alphas
-thrust::copy(d_b.begin(), d_b.end(), aj1.begin()+10);
-thrust::copy(d_c.begin(), d_c.end(), aj1.begin()+20);
+thrust::copy(d_b.begin(), d_b.end(), aj1.begin()+28);
+thrust::copy(d_c.begin(), d_c.end(), aj1.begin()+56);
 
-gen_gamma<<<1, 30>>>(dv_aj1, dv_aj2, dv_aj3, count1, d_states, U, dv_Uni);//generating gamma samples (proposals)
+gen_gamma<<<gridSize, 28*3>>>(dv_aj1, dv_aj2, dv_aj3, count1, d_states, U, dv_Uni);//generating gamma samples (proposals)
 
-thrust::copy_n(aj2.begin(), 10, alpha1.begin() );   //separating the alphas
-thrust::copy_n(aj2.begin()+10, 2*10, alpha2.begin() );
-thrust::copy_n(aj2.begin()+(2*10), 3*10, alpha3.begin() );
+thrust::copy_n(aj2.begin(), 28, alpha1.begin() );   //separating the alphas
+thrust::copy_n(aj2.begin()+28, 56, alpha2.begin() );
+thrust::copy_n(aj2.begin()+56, 84, alpha3.begin() );
 
 thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(alpha1.begin(),alpha2.begin(),alpha3.begin(), 
                                             ad1.begin(),ad2.begin(),ad3.begin())),
@@ -503,19 +561,7 @@ thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(alpha1.begin(),alp
 alpha1 = ad1;
 alpha2 = ad2;
 alpha3 = ad3;
-/*
-std::cout << "current d_a" <<std::endl;
-for(int i2 = 0; i2<10; i2++){
-    std::cout << d_a[i2] <<std::endl;
-}
-std::cout << "current d_b" <<std::endl;
-for(int i2 = 0; i2<10; i2++){
-    std::cout << d_b[i2] <<std::endl;
-}
-std::cout << "current d_c" <<std::endl;
-for(int i2 = 0; i2<10; i2++){
-    std::cout << d_c[i2] <<std::endl;
-}*/
+
 
 k1 = c_k1[0]; k2 = c_k2[0]; k3 = c_k3[0];
 
@@ -535,17 +581,12 @@ calacp<<<gridSize, blockSize>>>(dv_ptra, dv_ptrb, dv_ptrc, dv_a1, dv_a2, dv_a3, 
                                 dv_Rkp, dv_Rkc, d_states, U, dv_Acc);
 
 acp = thrust::reduce(Acc.begin(), Acc.end()) + acp;
-/*
-thrust::copy(thrust::device, d_a.begin(), d_a.end(), Af1.begin() + acc);
-//acc = acc + 10;
-thrust::copy(thrust::device, d_b.begin(), d_b.end(), Af2.begin() + acc);
-//acc = acc + 10;
-thrust::copy(thrust::device, d_c.begin(), d_c.end(), Af3.begin() + acc);
-acc = acc + 10;*/
+
 
 //double Uk1 = .7;
-double Uk1 =0.7;
-double t = ((c_k1[0] + Uk1)-(c_k1[0] - Uk1)+.91)*Uni[0] + (c_k1[0] - Uk1);
+double Uk1 =.6;
+double adj = 0.83;
+double t = ((c_k1[0] + Uk1)-(c_k1[0] - Uk1)+adj)*Uni[0] + (c_k1[0] - Uk1);
 
 if(t < 0){
     p_k1[0] = -t;
@@ -554,8 +595,8 @@ else{
     p_k1[0] = t;
 }
 
-//double Uk2 = .10;
-double t2 = ((c_k2[0] + Uk1)-(c_k2[0] - Uk1)+.91)*Uni[1] + (c_k2[0] - Uk1);
+//double Uk2 = 1;
+double t2 = ((c_k2[0] + Uk1)-(c_k2[0] - Uk1)+adj)*Uni[1] + (c_k2[0] - Uk1);
 
 if(t2 < 0){
     p_k2[0] = -t2;
@@ -564,8 +605,8 @@ else{
     p_k2[0] = t2;
 }
 
-//double Uk3 = .10;
-double t3 = ((c_k3[0] + Uk1)-(c_k3[0] - Uk1)+.91)*Uni[2] + (c_k3[0] - Uk1);
+//double Uk3 = 1;
+double t3 = ((c_k3[0] + Uk1)-(c_k3[0] - Uk1)+adj)*Uni[2] + (c_k3[0] - Uk1);
 
 if(t3 < 0){
     p_k3[0] = -t3;
@@ -577,9 +618,8 @@ else{
 double rpk = dch(p_k1[0], p_k2[0], p_k3[0], d_a, d_b, d_c);
 double rc = dch(c_k1[0], c_k2[0], c_k3[0], d_a, d_b, d_c);
 
-double kp1 = (log(0.5)+(-.5*p_k1[0]) + log(2.)+(-2.*p_k2[0]) + log(3.)+(-3.*p_k3[0]));
-double kc1 = (log(0.5)+(-.5*c_k1[0]) + log(2.)+ (-2.*c_k2[0]) +log(3.)+(-3.*c_k3[0]));
-
+double kp1 = ((-.5*p_k1[0]) + (-2.*p_k2[0]) + (-6.5*p_k3[0]));
+double kc1 = ((-.5*c_k1[0]) + (-2.*c_k2[0]) + (-6.5*c_k3[0]));
 
 a1k = (( rpk + kp1 )-( rc + kc1 ));
 
@@ -606,9 +646,25 @@ K3[j] = c_k3[0];
        
 }
 
+thrust::device_vector<double> di1(num);
+thrust::device_vector<double> di2(num);
+thrust::device_vector<double> di3(num);
+
+double * dv_di1 = thrust::raw_pointer_cast(di1.data());
+double * dv_di2 = thrust::raw_pointer_cast(di2.data());
+double * dv_di3 = thrust::raw_pointer_cast(di3.data());
+
 int count3 = counter - 1;
 int num1 = (.4*num) - 1;
 ccopy<<<400, 1000>>>(dv_K1, dv_K2, dv_K3, dv_Kth1, dv_Kth2, dv_Kth3, count3, num1);
+g_samp<<<400, 1000>>>(dv_Kth1, dv_Ath1, dv_re, counter, d_states);
+g_samp<<<400, 1000>>>(dv_Kth2, dv_Ath2, dv_re, counter, d_states);
+g_samp<<<400, 1000>>>(dv_Kth3, dv_Ath3, dv_re, counter, d_states);
+
+thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(Ath1.begin(),Ath2.begin(),Ath3.begin(), 
+                                            di1.begin(),di2.begin(),di3.begin())),
+            thrust::make_zip_iterator(thrust::make_tuple(Ath1.end(),Ath2.end(),Ath3.end(),
+                                        di1.end(),di2.end(),di3.end())),dirichlet());
 cudaFree(d_states);
 
 //std::cout << "acceptance: "<< acp/(10*num) <<std::endl;
@@ -622,8 +678,8 @@ std::cout<<"K: "<<a1k<<std::endl;
     std::ofstream myfile3;
     myfile3.open ("K1.txt");
     
-    for(int p1 = 0; p1 < num; p1++){
-        myfile3 << K1[p1] << std::endl;
+    for(int p1 = 0; p1 < counter; p1++){
+        myfile3 << di1[p1] << std::endl;
 
     }
     myfile3.close();
@@ -631,8 +687,8 @@ std::cout<<"K: "<<a1k<<std::endl;
     std::ofstream myfile4;
     myfile4.open ("K2.txt");
     
-    for(int p1 = 0; p1 < num; p1++){
-        myfile4 << K2[p1] << std::endl;
+    for(int p1 = 0; p1 < counter; p1++){
+        myfile4 << di2[p1] << std::endl;
 
     }
     myfile4.close();
@@ -640,8 +696,8 @@ std::cout<<"K: "<<a1k<<std::endl;
     std::ofstream myfile5;
     myfile5.open ("K3.txt");
     
-    for(int p1 = 0; p1 < num; p1++){
-        myfile5 << K3[p1] << std::endl;
+    for(int p1 = 0; p1 < counter; p1++){
+        myfile5 << di3[p1] << std::endl;
 
     }
     myfile5.close();
