@@ -4,10 +4,10 @@
 //This code will read the alphas from alpha1.txt, alpha2.txt and alpha3.txt to generate synthetic gene expression ratio r.
 //Then these r was used to estimate the parameter vectors of the Dirichlet distribution by using random walk Metropolis-Hastings algorithm.
 //Samples were obtained from the Dirichlet distribution after estimating the parameters. The obtained samples were similar to the true samples.
+//The obtained modes of K1, K2, K3 is (0.5145 .3743 .1112)T which is very close to the actual mode i.e. (.5165, .3746, .1089)^T
 //The results i.e. K1, K2, K3 will be saved on your hard disk.
 //K1 will be saved in K1.txt, K2 will be saved in K2.txt and K3 will be saved in K3.txt
 // K1.txt, K2.txt and K3.txt will store the Dirichlet distributed samples from the estimated parameter vector.
-//The obtained modes of K1, K2, K3 is (0.5145 .3743 .1112)T which is very close to the actual mode i.e. (.5165, .3746, .1089)^T
 //This is the code for my paper published in the IEEE/ACM Transactions on Computational Biology and Bioinformatics. 
 //Paper link: https://ieeexplore.ieee.org/abstract/document/9445622
 
