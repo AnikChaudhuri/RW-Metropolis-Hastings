@@ -1,8 +1,11 @@
 //500 synthetic data GPU code.
 //500 alphas were generated from Dir(10, 6, 3) in python and they were stored in files named alpha1.txt, alpha2.txt, alpha3.txt.
+//The modes of the Dirichlet distributed samples are (.5165, .3746, .1089)^T
 //This code will read the alphas from alpha1.txt, alpha2.txt and alpha3.txt to generate synthetic gene expression ratio r.
 //The results i.e. K1, K2, K3 will be saved on your hard disk.
 //K1 will be saved in K1.txt, K2 will be saved in K2.txt and K3 will be saved in K3.txt
+// K1.txt, K2.txt and K3.txt will store the Dirichlet distributed samples from the estimated parameter vector.
+//The obtained modes of K1, K2, K3 is (0.5145 .3743 .1112)T which is very close to the actual mode i.e. (.5165, .3746, .1089)^T
 
 #include <iostream>
 #include <fstream>
