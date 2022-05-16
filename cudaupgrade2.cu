@@ -1,6 +1,8 @@
-//500 synthetic data GPU code.
+//100 synthetic data GPU code.
 //500 alphas were generated from Dir(10, 6, 3) in python and they were stored in files named alpha1.txt, alpha2.txt, alpha3.txt.
 //The modes of the Dirichlet distributed samples are (.5165, .3746, .1089)^T
+//The user needs to download alpha1.txt, alpha2.txt, alpha3.txt and save them in the same folder with this code.
+//Run this code by using nvcc cudaupgeade2.cu
 //This code will read the alphas from alpha1.txt, alpha2.txt and alpha3.txt to generate synthetic gene expression ratio r.
 //Then these r was used to estimate the parameter vectors of the Dirichlet distribution by using random walk Metropolis-Hastings algorithm.
 //Samples were obtained from the Dirichlet distribution after estimating the parameters. The obtained samples were similar to the true samples.
